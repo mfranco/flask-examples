@@ -12,25 +12,25 @@ Python 2.7.x
 Installation
 -------------
 
-1. Create a virtual with python 3 support: ::
+1. Create a virtual with:
 
-    mkvirtualenv flaskapi -p /usr/bin/python3
-    workon flaskapi
-
-
-2. Install requirements file: ::
-
-    pip install -r requirements.txt
+        mkvirtualenv flaskapi
+        workon flaskapi
 
 
-3. Run unit test suite: ::
+2. Install requirements file:
 
-    python manage.py test
+        pip install -r requirements.txt
 
 
-4. Run app: ::
+3. Run unit test suite:
 
-    python manage.py runserver
+        python manage.py test
+
+
+4. Run app:
+
+        python manage.py runserver
 
 
 User API

@@ -1,16 +1,21 @@
-from test.common import ApiBaseTestCase
+from test.base import ApiBaseTestCase, raises, ModelTestFactory
+from users.models import User, AuthenticationError
+
+from sqlalchemy.exc import IntegrityError
+
 
 class UserModelTestCase(ApiBaseTestCase):
+    @raises(IntegrityError)
     def test_fail_create_required_fields(self):
-        print("4")
-        pass
+        user = User()
+        user.add()
 
-    def test_fail_username_unique(self):
-        print("5")
-        pass
-
+    @raises(AuthenticationError)
     def test_fail_invalid_access_token(self):
-        print("6")
-        pass
+        user = ModelTestFactory.get_user()
+        User.authenticate(user.username, '123')
 
-
+    def test_authentication_ok(self):
+        user = ModelTestFactory.get_user()
+        user2 = User.authenticate(user.username, user.access_token)
+        self.assertEquals(user.id, user2.id)

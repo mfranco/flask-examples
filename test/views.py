@@ -1,12 +1,14 @@
+from users.models import User
 from users.views import *
-from test.common import ApiBaseTestCase
+from test.base import ApiBaseTestCase
 
 class UserViewsTestCase(ApiBaseTestCase):
     def test_get_user_request(self):
         response = self.client.get('/users/')
-        print(response.data)
+        self.assertRegexpMatches(response.data, '.*ENDPOINT')
 
     def test_fail_create_required_fields(self):
+        self.assertEquals(0, User.objects.filter_by().count())
         print("7")
         pass
 

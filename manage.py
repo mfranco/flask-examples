@@ -1,11 +1,12 @@
 import argparse
 
 def syncdb(**kwargs):
-    from models.base import get_engine
+    from common.models import get_engine
     from sqlalchemy.ext.declarative import declarative_base
+    from users.models import User
     engine = get_engine()
     Base = declarative_base()
-    CommercialActivity.metadata.create_all(engine)
+    User.metadata.create_all(engine)
 
 def test(**kwargs):
     from test import init_test
