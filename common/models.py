@@ -37,6 +37,10 @@ def get_session(*args, **kwargs):
     factory = SessionFactory()
     return factory.get_session()
 
+def close_session():
+    session = get_session()
+    session.close_all()
+
 
 Base = declarative_base()
 
@@ -54,7 +58,17 @@ class BaseManager(object):
         return self.session.query(self._model).get(id)
 
 
-class BaseModel(Base):
+
+
+class JsonSerializer(object):
+    def to_serializable_dict(self):
+        serialized_dict = {}
+        for key in self.__table__.c.keys():
+            serialized_dict[key] = getattr(self, key)
+        return serialized_dict
+
+
+class BaseModel(Base, JsonSerializer):
 
     __abstract__ = True
 
@@ -63,6 +77,10 @@ class BaseModel(Base):
         self.session = get_session()
         for name, value in kwargs.items():
             setattr(self, name, value)
+
+    def close_session(self):
+        if self.session:
+            self.session.close_all()
 
     id = Column(Integer, primary_key=True)
 

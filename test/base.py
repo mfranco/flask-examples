@@ -1,5 +1,7 @@
 from users.models import User
 
+import json
+import os
 import random
 import string
 import unittest
@@ -20,11 +22,17 @@ class ApiBaseTestCase(unittest.TestCase):
         self._init_db()
 
     def tearDown(self):
-        import os
+        from common.models import close_session
+        close_session()
         try:
             os.remove('test.db')
         except OSError:
             pass
+
+    def json_request(self, url, data={}):
+        headers = [('Content-Type', 'application/json')]
+        json_data = json.dumps(data)
+        return self.client.post(url, data=json_data, headers=headers)
 
 
 class raises(object):
