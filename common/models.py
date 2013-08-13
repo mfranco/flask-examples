@@ -106,6 +106,10 @@ class BaseModel(Base, JsonSerializer):
 
     def add(self):
         try:
+
+            if not hasattr(self, 'session'):
+                self.session = get_session()
+
             self.session.add(self)
             self.session.commit()
         except Exception as error:
@@ -114,6 +118,9 @@ class BaseModel(Base, JsonSerializer):
 
     def delete(self):
         try:
+            if not hasattr(self, 'session'):
+                self.session = get_session()
+
             self.session.delete(self)
             self.session.commit()
         except Exception as error:

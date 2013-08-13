@@ -28,3 +28,6 @@ class BaseResource(object):
             if 'id' != key:
                 setattr(self.__model__, key, value)
         self.__model__.update()
+
+    def delete(self):
+        self.__model__.delete()

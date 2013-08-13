@@ -4,6 +4,9 @@ from common.views import APIView
 from users.auth import auth_required
 from users.resources import UserResource
 
+
+
+
 class UserAPIView(APIView):
     @auth_required
     def get(self, user=None, **kwargs):
@@ -26,14 +29,28 @@ class UserAPIView(APIView):
     def put(self, user=None, **kwargs):
         response = {}
         user_resource = UserResource(request.json, model=user)
-        
+        if user_resource.is_valid():
+            try:
+                user_resource.update()
+                response['user'] = user_resource.to_serializable_dict()
+            except Exception as error:
+                print error
+                pass
         return self.json_response(data=response)
 
-    def delete(self):
+    @auth_required
+    def delete(self, user=None, **kwargs):
         response = {}
-
-        response.update(self.json_result)
+        try:
+            user.delete()
+            response['ok'] = 'record deleted'
+        except Exception as error:
+            print error
+            pass
         return self.json_response(data=response)
 
 app = Flask(__name__)
-app.add_url_rule('/users/', view_func=UserAPIView.as_view('users'))
+app.add_url_rule('{0}/users/'.format(UserAPIView.ENDPOINT), view_func=UserAPIView.as_view('users'))
+
+def run_app():
+    app.run()

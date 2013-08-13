@@ -10,10 +10,7 @@ class APIView(MethodView):
         http://flask.pocoo.org/docs/views/#method-based-dispatching.
     """
 
-    @property
-    def json_result(self):
-        ENDPOINT = '/mymusic/api/v1.0/'
-        return {'ENDPOINT': ENDPOINT}
+    ENDPOINT = '/mymusic/api/v1.0'
 
     def get(self):
         abort(400)

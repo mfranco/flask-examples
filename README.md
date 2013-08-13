@@ -28,7 +28,12 @@ Installation
         python manage.py test
 
 
-4. Run app:
+4. Create database:
+
+        python manage.py syncdb
+
+
+5. Run app:
 
         python manage.py runserver
 
@@ -42,6 +47,81 @@ is define a root url: ::
 
     http://[hostname]/mymusic/api/v1.0/
 
+
+After that we will define the User Resource urls that will allows to create, query, update, delete an user.
+
+
+Create an User
+--------------
+
+POST request to create an user: ::
+
+    curl -X POST localhost:5000/mymusic/api/v1.0/users/ -H "Content-Type: application/json" \
+         -d '{"username": "maigfrga", "email": "maigfrga@gmail.com", \
+              "last_name": "franco", "first_name": "manuel"}'
+
+
+
+This request will return a json with the user information, access_token included: ::
+
+        {
+          "user": {
+            "access_token": "dda568fe6781259a1f9b910c6704b4da", 
+            "email": "maigfrga@gmail.com", 
+            "first_name": "manuel", 
+            "id": 1, 
+            "last_name": "franco", 
+            "username": "maigfrga"
+          }
+        }
+
+
+
+Authentication
+--------------
+
+GET, PUT, DELETE request requires authentication, the API expects two headers **api_access_token** and **api_username** the next example will return user information, authentication is required: ::
+
+
+    curl  localhost:5000/mymusic/api/v1.0/users/ -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
+         -H "api_username: maigfrga"
+
+
+This call will return the user data: ::
+
+    {
+        "access_token": "dda568fe6781259a1f9b910c6704b4da", 
+        "email": "maigfrga@gmail.com", 
+          "first_name": "manuel", 
+          "id": 1, 
+          "last_name": "franco", 
+          "username": "maigfrga"
+    }
+
+
+
+
+
+Update an user
+--------------
+
+Perform a PUT request will update the user resource: ::
+
+
+        curl -X PUT  localhost:5000/mymusic/api/v1.0/users/ -H "Content-Type: application/json" \
+             -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
+             -H "api_username: maigfrga" -d '{"last_name": "last name modified"}'
+
+
+
+Delete an user
+--------------
+
+Perform  a DELETE request will delete the user resource: ::
+
+        curl -X DELETE  localhost:5000/mymusic/api/v1.0/users/  \
+         -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
+         -H "api_username: maigfrga"
 
 
 See also

@@ -8,7 +8,7 @@ import json
 class UserViewsTestCase(ApiBaseTestCase):
     def setUp(self):
         super(UserViewsTestCase, self).setUp()
-        self.users_url = '/users/'
+        self.users_url = '{0}/users/'.format(UserAPIView.ENDPOINT)
 
     def test_get_user_request_info(self):
         user = ModelTestFactory.get_user()
@@ -44,5 +44,21 @@ class UserViewsTestCase(ApiBaseTestCase):
 
     def test_update_user_info(self):
         user = ModelTestFactory.get_user(username='maigfrga')
-        response = self.json_request_with_credentials(self.users_url, method='put',
+        self.assertEquals(1, User.objects.filter_by().count())
+        old_last_name = user.last_name
+        new_last_name = 'updated_last_name'
+        data = {'last_name': new_last_name}
+        response = self.json_request_with_credentials(self.users_url, method='put', data=data,
                                                       username=user.username, access_token=user.access_token)
+        json_dict_response = json.loads(response.data)
+        self.assertEquals(new_last_name, json_dict_response['user']['last_name'])
+        user2 = User.objects.get(user.id)
+        self.assertNotEquals(user2.last_name, old_last_name)
+        self.assertEquals(1, User.objects.filter_by().count())
+
+    def test_delete_user(self):
+        user = ModelTestFactory.get_user(username='maigfrga')
+        self.assertEquals(1, User.objects.filter_by().count())
+        response = self.json_request_with_credentials(self.users_url, method='delete',
+                                                      username=user.username, access_token=user.access_token)
+        self.assertEquals(0, User.objects.filter_by().count())
