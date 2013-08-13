@@ -1,5 +1,6 @@
-from flask import abort
+from flask import abort, jsonify
 from flask.views import MethodView
+
 
 class APIView(MethodView):
     """ Generic API, all the API views will inherit for this base class
@@ -25,3 +26,6 @@ class APIView(MethodView):
 
     def delete(self):
         abort(400)
+
+    def json_response(self, data={}):
+        return jsonify(data)

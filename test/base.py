@@ -29,10 +29,17 @@ class ApiBaseTestCase(unittest.TestCase):
         except OSError:
             pass
 
-    def json_request(self, url, data={}):
-        headers = [('Content-Type', 'application/json')]
+    def json_request_with_credentials(self, url, data={}, method='post',
+                                      headers=[], access_token=None, username=''):
+        headers.append(('api_access_token', access_token))
+        headers.append(('api_username', username))
+        return self.json_request(url, data=data, method=method, headers=headers)
+
+    def json_request(self, url, data={}, method='post', headers=[]):
+        headers.append(('Content-Type', 'application/json'))
         json_data = json.dumps(data)
-        return self.client.post(url, data=json_data, headers=headers)
+        func = getattr(self.client, method)
+        return func(url, data=json_data, headers=headers)
 
 
 class raises(object):

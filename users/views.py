@@ -1,42 +1,39 @@
 from flask import Flask, jsonify, request
 
 from common.views import APIView
-from users.models import User
-
-
-class UserValidator():
-     def __init__(self, data):
-         self._is_valid = True
-
-     def is_valid(self):
-         return self._is_valid
+from users.auth import auth_required
+from users.resources import UserResource
 
 class UserAPIView(APIView):
-    def get(self):
-        return jsonify(self.json_result)
+    @auth_required
+    def get(self, user=None, **kwargs):
+        return self.json_response(data=user.to_serializable_dict())
+
 
     def post(self):
         response = {}
-        validator = UserValidator(request.json)
-        if validator.is_valid():
+        user_resource = UserResource(request.json)
+        if user_resource.is_valid():
             try:
-                user = User(**request.json)
-                user.add()
-                response['user'] = user.to_serializable_dict()
+                user_resource.add()
+                response['user'] = user_resource.to_serializable_dict()
             except Exception as error:
                 print error
                 pass
-        return jsonify(response)
+        return self.json_response(data=response)
 
-    def put(self):
+    @auth_required
+    def put(self, user=None, **kwargs):
         response = {}
-        response.update(self.json_result)
-        return jsonify(response)
+        user_resource = UserResource(request.json, model=user)
+        
+        return self.json_response(data=response)
 
     def delete(self):
         response = {}
+
         response.update(self.json_result)
-        return jsonify(response)
+        return self.json_response(data=response)
 
 app = Flask(__name__)
 app.add_url_rule('/users/', view_func=UserAPIView.as_view('users'))

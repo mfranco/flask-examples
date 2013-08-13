@@ -1,6 +1,9 @@
+from common.serializer import JsonSerializer
+
 from sqlalchemy import create_engine, Column, Integer
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import sessionmaker, scoped_session
+
 import sys
 
 
@@ -8,6 +11,7 @@ if 'test' in sys.argv:
     conection_string = 'sqlite:///test.db'
 else:
     conection_string = 'sqlite:///music.db'
+
 
 def get_engine(*args, **kwargs):
     return create_engine(conection_string)
@@ -37,41 +41,34 @@ def get_session(*args, **kwargs):
     factory = SessionFactory()
     return factory.get_session()
 
+
 def close_session():
     session = get_session()
     session.close_all()
 
 
-Base = declarative_base()
-
 class BaseManager(object):
+    """
+    Base manager, every model will have this common manager that allows permorf database common operations
+    """
     def __init__(self, model, *args, **kwargs):
         self._model = model
         self.session = get_session()
 
-
     def filter_by(self, order_by='id', limit=500, offset=0, **kwargs):
         return self.session.query(self._model).filter_by(**kwargs).order_by(order_by).limit(limit).offset(offset)
-
 
     def get(self, id):
         return self.session.query(self._model).get(id)
 
 
-
-
-class JsonSerializer(object):
-    def to_serializable_dict(self):
-        serialized_dict = {}
-        for key in self.__table__.c.keys():
-            serialized_dict[key] = getattr(self, key)
-        return serialized_dict
+Base = declarative_base()
 
 
 class BaseModel(Base, JsonSerializer):
-
+    """Abstract base model, contiains common field and methods for all models
+    """
     __abstract__ = True
-
 
     def __init__(self, *args, **kwargs):
         self.session = get_session()
@@ -97,7 +94,6 @@ class BaseModel(Base, JsonSerializer):
         if not hasattr(cls, 'session'):
             cls.session = get_session()
         return cls.session.execute(sql, kwargs)
-
 
     def update(self):
         try:
