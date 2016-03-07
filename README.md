@@ -92,10 +92,10 @@ This call will return the user data: ::
     {
         "access_token": "dda568fe6781259a1f9b910c6704b4da", 
         "email": "maigfrga@gmail.com", 
-          "first_name": "manuel", 
-          "id": 1, 
-          "last_name": "franco", 
-          "username": "maigfrga"
+        "first_name": "manuel", 
+        "id": 1, 
+        "last_name": "franco", 
+        "username": "maigfrga"
     }
 
 
