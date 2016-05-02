@@ -1,6 +1,6 @@
 class BaseResource(object):
     """
-    Validation logic for user json strcture must be implemented here
+    Validation logic for user json structure must be implemented here
     """
     __model__ = None
 
