@@ -1,31 +1,42 @@
 import argparse
-from users.views import run_app
+import subprocess
+import os
 
 
-def syncdb(**kwargs):
-    from common.models import get_engine
-    from sqlalchemy.ext.declarative import declarative_base
-    from users.models import User
-    engine = get_engine()
-    Base = declarative_base()
-    User.metadata.create_all(engine)
+def run_unit_tests() -> str:
+    parser = argparse.ArgumentParser()
 
-def runserver():
-    run_app()
+    parser.add_argument('--q', required=True)
 
-def test(**kwargs):
-    from test import init_test
-    init_test()
-
+    args, extra_params = parser.parse_known_args()
+    return "pipenv run pytest -s -q /flask-examples/{}".format(args.q)
 
 def main():
-    parser = argparse.ArgumentParser(description='flask user api demo')
-    parser.add_argument('action', nargs='+', choices=['test', 'runserver', 'syncdb'] )
-    args = parser.parse_args()
-    kwargs = {}
-    task_dict = {'syncdb': syncdb, 'test': test, 'runserver': runserver}
-    task = args.action[0]
-    task_dict[task](**kwargs)
+    description = 'Run a command inside a container '
+    parser = argparse.ArgumentParser(description=description)
+
+    parser.add_argument('command')
+
+    args, extra_params = parser.parse_known_args()
+
+    command_options = {
+        'test': run_unit_tests()
+    }
+
+
+    cmd = [
+        "docker-compose",
+        "run",
+        "--rm",
+        "--volume={}/:/flask-examples/".format(os.getcwd()),
+        "python",
+        "sh",
+        "-c",
+        command_options[args.command]
+    ]
+
+    subprocess.run(cmd, cwd=r'./tools')
+
 
 if __name__ == '__main__':
     main()

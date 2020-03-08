@@ -1,0 +1,15 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+ipdb="*"
+flake8="*"
+pytest="*"
+
+[packages]
+flask="*"
+jsonschema="*"
+bcrypt="*"
+simplejson="*"

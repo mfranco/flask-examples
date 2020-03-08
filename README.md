@@ -1,31 +1,53 @@
-Flask User API
+Flask Examples 
 =================
 
-A simple User RESTFUL API built using Flask Framework (http://flask.pocoo.org/) and Sqlalchemy
+RESTFUL API endpoints built using Flask Framework (http://flask.pocoo.org/) and Sqlalchemy
 (http://www.sqlalchemy.org/)
 
 Requirements
 ------------
-Python 2.7.x
+- Python 3
+- Docker
+- Docker-Compose
 
 
 Installation
 -------------
 
-1. Create a virtual with:
-
-        mkvirtualenv flaskapi
-        workon flaskapi
-
-
-2. Install requirements file:
-
-        pip install -r requirements.txt
+Create the docker environmnet with the following commands:
+```
+  cd dtools
+  docker-compose up
+```
 
 
-3. Run unit test suite:
+Unit Tests
+------------
 
-        python manage.py test
+Run the unit test suite with the following command:
+
+```
+python3 manage.py test --q src/tests/
+```
+
+To run all the tests inside one file:
+
+```
+python3 manage.py test --q src/tests/test_app.py 
+```
+
+
+To run a specific test:
+
+```
+python3 manage.py test --q src/tests/test_app.py::test_app_config
+```
+
+
+
+DataBase Connection
+---------------------
+
 
 
 4. Create database:
@@ -122,6 +144,17 @@ Perform  a DELETE request will delete the user resource: ::
         curl -X DELETE  localhost:5000/mymusic/api/v1.0/users/  \
          -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
          -H "api_username: maigfrga"
+
+
+Useful commands
+-------------------
+
+
+### Kill all running docker containers:
+
+
+ docker kill $(docker ps | grep pg | awk '{print $1}')
+    
 
 
 See also
