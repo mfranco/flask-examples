@@ -1,5 +1,4 @@
 from flask import current_app, _app_ctx_stack
-from flask_philo_core import ConfigurationError
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -28,25 +27,28 @@ class ConnectionPool:
         Initialize a database connection by each connection string
         defined in the configuration file
         """
-        for connection_name, connection_string in\
-                self.app.config['FLASK_PHILO_SQLALCHEMY'].items():
-            engine = create_engine(connection_string)
-            session = scoped_session(sessionmaker(), scopefunc=scopefunc)
-            session.configure(bind=engine)
-            self.connections[connection_name] = Connection(engine, session)
+
+        for k, v in self.app.config.items():
+            if k.startswith('SQLALCHEMY'):
+                connection_string = v
+                connection_name = k
+                engine = create_engine(connection_string)
+                session = scoped_session(sessionmaker(), scopefunc=scopefunc)
+                session.configure(bind=engine)
+                self.connections[connection_name] = Connection(engine, session)
 
     def close(self):
         for k, v in self.connections.items():
             v.session.remove()
 
-    def commit(self, connection_name='DEFAULT'):
+    def commit(self, connection_name='SQLALCHEMY_DEFAULT'):
         if connection_name is None:
             for conn_name, conn in self.connections.items():
                 conn.session.commit()
         else:
             self.connections[connection_name].session.commit()
 
-    def rollback(self, connection_name='DEFAULT'):
+    def rollback(self, connection_name='SQLALCHEMY_DEFAULT'):
         if connection_name is None:
             for conn_name, conn in self.connections.items():
                 conn.session.rollback()
@@ -56,9 +58,10 @@ class ConnectionPool:
 
 def create_pool():
     app = current_app._get_current_object()
-    if 'FLASK_PHILO_SQLALCHEMY' not in app.config:
-        raise ConfigurationError(
-            'Not configuration found for Flask_Philo_SQLAlchemy')
+
+    if 'SQLALCHEMY_DEFAULT' not in app.config:
+        raise Exception(
+            'Not configuration found for SQLAlchemy')
     ctx = _app_ctx_stack.top
     if ctx is not None:
         if not hasattr(ctx, 'sqlalchemy_pool'):

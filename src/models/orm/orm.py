@@ -2,7 +2,6 @@ from sqlalchemy import Column, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.sql import text
 
-from flask_philo_sqlalchemy.exceptions import NotFoundError, InvalidQueryError
 from flask_philo_sqlalchemy.schema import Base
 from flask_philo_sqlalchemy.connection import create_pool
 
@@ -24,7 +23,7 @@ class BaseManager(object):
 
     def filter_by(
         self, order_by='id', limit=500, offset=0,
-            connection_name='DEFAULT', **kwargs):
+            connection_name='SQLALCHEMY_DEFAULT', **kwargs):
 
         return self.pool.connections[connection_name].session.query(
             self._model
@@ -32,7 +31,7 @@ class BaseManager(object):
                 **kwargs
             ).order_by(order_by).limit(limit).offset(offset)
 
-    def get_for_update(self, connection_name='DEFAULT', **kwargs):
+    def get_for_update(self, connection_name='SQLALCHEMY_DEFAULT', **kwargs):
 
         """
         http://docs.sqlalchemy.org/en/latest/orm/query.html?highlight=update#sqlalchemy.orm.query.Query.with_for_update  # noqa
@@ -48,7 +47,7 @@ class BaseManager(object):
             raise NotFoundError('Object not found')
         return obj
 
-    def get(self, connection_name='DEFAULT', **kwargs):
+    def get(self, connection_name='SQLALCHEMY_DEFAULT', **kwargs):
 
         if not kwargs:
             raise InvalidQueryError(
@@ -61,7 +60,7 @@ class BaseManager(object):
             raise NotFoundError('Object not found')
         return obj
 
-    def count(self, connection_name='DEFAULT'):
+    def count(self, connection_name='SQLALCHEMY_DEFAULT'):
         result = self.pool.connections[connection_name].session.execute(
             'SELECT count(id) from {}'.format(self._model.__table__.name)
         )
@@ -72,11 +71,11 @@ class BaseManager(object):
         else:
             return 0
 
-    def raw_sql(self, sql, connection_name='DEFAULT', **kwargs):
+    def raw_sql(self, sql, connection_name='SQLALCHEMY_DEFAULT', **kwargs):
         return self.pool.connections[
             connection_name].session.execute(text(sql), kwargs)
 
-    def add_all(self, data, connection_name='DEFAULT'):
+    def add_all(self, data, connection_name='SQLALCHEMY_DEFAULT'):
         return self.pool.connections[connection_name].session.add_all(data)
 
 
@@ -104,13 +103,13 @@ class BaseModel(Base):
     def objects(cls):
         return BaseManager(cls)
 
-    def update(self, connection_name='DEFAULT'):
+    def update(self, connection_name='SQLALCHEMY_DEFAULT'):
         self.objects.pool.connections[connection_name].session.flush()
 
-    def add(self, connection_name='DEFAULT'):
+    def add(self, connection_name='SQLALCHEMY_DEFAULT'):
         self.objects.pool.connections[connection_name].session.add(self)
         self.objects.pool.connections[connection_name].session.flush()
 
-    def delete(self, connection_name='DEFAULT'):
+    def delete(self, connection_name='SQLALCHEMY_DEFAULT'):
         self.objects.pool.connections[connection_name].session.delete(self)
         self.objects.pool.connections[connection_name].session.flush()
