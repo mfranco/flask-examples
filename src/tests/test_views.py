@@ -1,8 +1,9 @@
 from flask import json, request, Response, current_app
 from app import get_or_create_app
 from serializers import JsonSerializer, SerializerError
-from views import json_response, BaseResourceView
+from views import json_response, BaseResourceView, SQLAlchemyView
 from tests.base import BaseTestFactory
+from models.orm import BaseModel, syncdb, cleandb
 
 from datetime import date, datetime
 from jsonschema.exceptions import ValidationError
@@ -64,7 +65,7 @@ class Error(JsonSerializer):
     _schema = error_schema
 
 
-# class based view
+
 class MessageView(BaseResourceView):
     db = {
         'f3f99fe6-3099-4fc4-aad4-31babad961c6':
@@ -135,28 +136,31 @@ class MessageView(BaseResourceView):
             return json_response(status=500)
 
 
-# simple function view
-@flask_bh_decorator
-def message_post() -> Response:
-    app = current_app._get_current_object()
-    try:
-        serializer = NewMessage(data=request.json)
-        data = serializer.data
-        data['key'] = uuid.uuid4()
-        return json_response(status=201, data=Message(data=data).data)
-
-    except ValidationError as e:
-        return json_response(status=400, data={'msg': e.message})
-
-    except Exception as e:
-        app.logger.error(e)
-        return json_response(status=500)
 
 
-# Mocking routes module
-routes_mock = Mock()
+class MessageModel(BaseModel):
+    __tablename__ = 'messages'
+    title = Column(String(256))
 
-routes_mock.ROUTES = (
+
+class MessageSQLView(SQLAlchemyView):
+    def post(self) -> Response:
+        app = current_app._get_current_object()
+        try:
+            serializer = NewMessage(data=request.json)
+            data = serializer.data
+            data['key'] = uuid.uuid4()
+            return json_response(status=201, data=Message(data=data).data)
+
+        except ValidationError as e:
+            return json_response(status=400, data={'msg': e.message})
+
+        except Exception as e:
+            app.logger.error(e)
+            return json_response(status=500)
+
+
+ROUTES = (
     {
         'rule': '/messages', 'endpoint': 'messages',
         'view_func': MessageView.as_view('messages')
@@ -166,25 +170,24 @@ routes_mock.ROUTES = (
         'view_func': MessageView.as_view('messages_key')
     },
     {
-        'rule': '/messages-func', 'endpoint': 'messages_func',
-        'view_func': message_post, 'methods': ['POST']
+        'rule': '/messages-sql', 'endpoint': 'home_key',
+        'view_func': MessageSQLView.as_view('messages_key')
     },
 )
 
-sys_modules_mock = {
-    'routes': routes_mock
+
+MOCK_ENV = {
+    'FLASK_CONFIG_PREFIXES': 'SQLALCHEMY',
+    'SQLALCHEMY_DEFAULT': 'postgresql://ds:dsps@pgdb:5432/ds_test',
 }
 
-mock_env = {
-    'FLASK_BH_LOG_LEVEL': 'DEBUG'
-}
-
-os_environ_mock = patch.dict(os.environ, mock_env)
+OS_ENVIRON_MOCK = patch.dict(os.environ, MOCK_ENV)
 
 
 def test_http_get():
-    with patch.dict(sys.modules, sys_modules_mock), os_environ_mock:
-        initialize_flask_bh(__name__)
+    with OS_ENVIRON_MOCK:
+        app = get_or_create_app(__name__, ROUTES)
+
         view = MessageView()
         result = view.get()
         assert 200 == result.status_code
@@ -193,8 +196,8 @@ def test_http_get():
 
 
 def test_http_post_method_view():
-    with patch.dict(sys.modules, sys_modules_mock), os_environ_mock:
-        with initialize_flask_bh(__name__).test_client() as c:
+    with OS_ENVIRON_MOCK:
+        with get_or_create_app(__name__, ROUTES).test_client() as c:
             data = {
                 'title': BaseTestFactory.create_random_string(),
                 'body': BaseTestFactory.create_random_string(),
@@ -217,26 +220,10 @@ def test_http_post_method_view():
             assert 201 == result.status_code
 
 
-def test_http_post_function_view():
-    with patch.dict(sys.modules, sys_modules_mock), os_environ_mock:
-        with initialize_flask_bh(__name__).test_client() as c:
-            data = {
-                'title': BaseTestFactory.create_random_string(),
-                'body': BaseTestFactory.create_random_string(),
-                'date': date.today(),
-                'date-time': datetime.utcnow()
-            }
-            serializer = NewMessage(data=data)
-            result = c.post(
-                '/messages-func', data=serializer.payload,
-                content_type='application/json'
-            )
-            assert 201 == result.status_code
-
 
 def test_http_put():
-    with patch.dict(sys.modules, sys_modules_mock), os_environ_mock:
-        with initialize_flask_bh(__name__).test_client() as c:
+    with OS_ENVIRON_MOCK:
+        with get_or_create_app(__name__, ROUTES).test_client() as c:
             data = {
                 'key': uuid.uuid4(),
                 'title': BaseTestFactory.create_random_string(),
@@ -262,63 +249,35 @@ def test_http_put():
             assert 200 == result.status_code
 
 
-@flask_bh_decorator
-def aws_create_message(event: typing.Dict, context: typing.Any) -> typing.Dict:
-    app = current_app._get_current_object()
-    try:
-        serializer = NewMessage(data=event['body'])
-        data = serializer.data
-        data['key'] = uuid.uuid4()
-        new_data = Message(data=data)
-        return {
-            'statusCode': 201,
-            'body': new_data.payload
-        }
+def test_http_post_method_view():
+    with OS_ENVIRON_MOCK:
+        app = get_or_create_app(__name__, ROUTES)
+        with app.app_context():
+            pool = create_pool()
+            syncdb(pool=pool)
+            cleandb(pool=pool)
+            assert 0 == MessageModel.objects.count()
 
-    except ValidationError as e:
-        data = {
-            'code': 400,
-            'message': e.message
-        }
-        serializer = Error(data=data)
-        return {
-            'statusCode': 400,
-            'body': serializer.payload
-        }
+            with app.test_client() as c:
 
-    except Exception as e:
-        app.logger.error(e)
-        data = {
-            'code': 500,
-            'message': 'Internal error'
-        }
-        serializer = Error(data=data)
-        return {
-            'statusCode': 500,
-            'body': serializer.payload
-        }
+                data = {
+                    'title': BaseTestFactory.create_random_string(),
+                    'body': BaseTestFactory.create_random_string(),
+                    'date': date.today(),
+                    'date-time': datetime.utcnow()
+                }
+                result = c.post(
+                    '/messages-sql', data=json.dumps(data),
+                    content_type='application/json'
+                )
+                assert 400 == result.status_code
+                j_content = json.loads(result.get_data().decode('utf-8'))
+                assert "is not a 'date'" in j_content['msg']
 
-
-def test_aws_lambda_view():
-
-    data = {
-        'title': BaseTestFactory.create_random_string(),
-        'body': BaseTestFactory.create_random_string(),
-        'date': date.today(),
-        'date-time': datetime.utcnow()
-    }
-    serializer = NewMessage(data=data)
-
-    event = {
-        'body': serializer.data,
-        'method': 'POST',
-        'pathParameters': {
-        },
-        'queryStringParameters': None
-    }
-    context = Mock()
-    with os_environ_mock:
-        result = aws_create_message(event, context)
-        serializer2 = Message(payload=result['body'])
-        for k in data.keys():
-            assert k in serializer2.data
+                serializer = NewMessage(data=data)
+                result = c.post(
+                    '/messages', data=serializer.payload,
+                    content_type='application/json'
+                )
+                assert 201 == result.status_code
+                assert 1 == MessageModel.objects.count()

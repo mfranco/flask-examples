@@ -466,8 +466,100 @@ def test_serializer_uuid_date_datetime():
 ```
 
 
+Extend from **SQLAlchemyView** if you need database connection:
+
+
+```
+
+```
+
+
+
+
 HTTP Views
 ---------------
+
+
+You can extend the **BaseResourceView** if you do not need a sqlachemy based postgres connection:
+
+
+
+```
+
+from views import json_response, BaseResourceView, , SQLAlchemyView
+
+
+class MessageView(BaseResourceView):
+    db = {
+        'f3f99fe6-3099-4fc4-aad4-31babad961c6':
+            {
+                'key': 'f3f99fe6-3099-4fc4-aad4-31babad961c6',
+                'title': 'title-1',
+                'body': 'body-1',
+                'date': date.today(),
+                'date-time': datetime.utcnow()
+            },
+
+        'c7b20c35-2779-49ec-9d09-9e287fcbe372':
+            {
+                'key': 'c7b20c35-2779-49ec-9d09-9e287fcbe372',
+                'title': 'title-2',
+                'body': 'body-2',
+                'date': date.today(),
+                'date-time': datetime.utcnow()
+            },
+    }
+
+    def get(self, key: uuid = None) -> Response:
+        status = 200
+        data = {}
+
+        if key is not None:
+            if key in self.db:
+                data = Message(data=self.db[key]).data
+            else:
+                status = 404
+        else:
+            data = [
+                Message(data=record).data
+                for record in self.db.values()
+            ]
+        return json_response(status=status, data=data)
+
+    def post(self) -> Response:
+        app = current_app._get_current_object()
+        try:
+            serializer = NewMessage(data=request.json)
+            data = serializer.data
+            data['key'] = uuid.uuid4()
+            return json_response(status=201, data=Message(data=data).data)
+
+        except ValidationError as e:
+            return json_response(status=400, data={'msg': e.message})
+
+        except Exception as e:
+            app.logger.error(e)
+            return json_response(status=500)
+
+    def put(self, key: uuid = None) -> Response:
+        app = current_app._get_current_object()
+        try:
+            self.db[str(key)]
+            serializer = Message(data=request.json)
+            return json_response(status=200, data=serializer.data)
+
+        except ValidationError as e:
+            return json_response(status=400, data={'msg': e.message})
+
+        except KeyError:
+            return json_response(status=404)
+
+        except Exception as e:
+            app.logger.error(e)
+            return json_response(status=500)
+
+
+```
 
 
 User API

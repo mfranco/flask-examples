@@ -1,15 +1,14 @@
 from flask import json, Response, current_app, _app_ctx_stack
-from flask_philo_sqlalchemy.connection import create_pool
+from models.orm.connection import create_pool
 from flask.views import MethodView
 
 import typing
-import json
 
 
 def json_response(
         status: int = 200, data: typing.Dict = {},
         headers: typing.Dict = {}) -> Response:
-    mimetype = 'application/json'
+    mimetype:str = 'application/json'
     return Response(
         json.dumps(data), status=status, mimetype=mimetype, headers=headers)
 

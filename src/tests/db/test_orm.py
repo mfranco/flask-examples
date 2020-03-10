@@ -6,7 +6,6 @@ from unittest.mock import patch
 from app import get_or_create_app
 from models.orm.connection import create_pool
 
-import pytest
 import os
 
 
