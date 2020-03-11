@@ -114,12 +114,10 @@ class BaseModel(Base):
         self.objects.pool.connections[connection_name].session.flush()
 
 
-
 def syncdb(pool=None):
     """
     Create tables if they don't exist
     """
-
 
     if pool is None:
         pool = create_pool()

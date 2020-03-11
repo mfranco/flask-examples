@@ -12,7 +12,6 @@ class Example(BaseModel):
     name = Column(String(256))
 
 
-
 def test_muti_crud():
     mock_env = {
         'FLASK_CONFIG_PREFIXES': 'SQLALCHEMY',
@@ -34,26 +33,35 @@ def test_muti_crud():
             rock.add(connection_name='SQLALCHEMY_DEFAULT')
             pool.commit(connection_name='SQLALCHEMY_DEFAULT')
 
-            assert 1 == Example.objects.count(connection_name='SQLALCHEMY_DEFAULT')
-            assert 0 == Example.objects.count(connection_name='SQLALCHEMY_DB2')
+            assert 1 == Example.objects.count(
+                connection_name='SQLALCHEMY_DEFAULT')
+            assert 0 == Example.objects.count(
+                connection_name='SQLALCHEMY_DB2')
 
             rock2 = Example(name='Rock2')
             rock2.add(connection_name='SQLALCHEMY_DB2')
             pool.commit(connection_name='SQLALCHEMY_DB2')
 
-            assert 1 == Example.objects.count(connection_name='SQLALCHEMY_DB2')
+            assert 1 == Example.objects.count(
+                connection_name='SQLALCHEMY_DB2')
 
-            r1 = Example.objects.get(connection_name='SQLALCHEMY_DEFAULT', name='Rock')
-            r2 = Example.objects.get(connection_name='SQLALCHEMY_DB2', name='Rock2')
+            r1 = Example.objects.get(
+                connection_name='SQLALCHEMY_DEFAULT', name='Rock')
+            r2 = Example.objects.get(
+                connection_name='SQLALCHEMY_DB2', name='Rock2')
 
             assert r1.name != r2.name
 
             rock.delete()
             pool.commit()
-            assert 0 == Example.objects.count(connection_name='SQLALCHEMY_DEFAULT')
+            assert 0 == Example.objects.count(
+                connection_name='SQLALCHEMY_DEFAULT')
 
-            l1 = list(Example.objects.filter_by(connection_name='SQLALCHEMY_DEFAULT'))
-            l2 = list(Example.objects.filter_by(connection_name='SQLALCHEMY_DB2'))
+            l1 = list(
+                Example.objects.filter_by(
+                    connection_name='SQLALCHEMY_DEFAULT'))
+            l2 = list(
+                Example.objects.filter_by(connection_name='SQLALCHEMY_DB2'))
 
             assert 0 == len(l1)
             assert 1 == len(l2)

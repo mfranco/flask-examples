@@ -2,7 +2,6 @@ from decimal import Decimal
 
 import random
 import string
-import sys
 import uuid
 
 
@@ -12,7 +11,8 @@ class BaseTestFactory(object):
         return uuid.uuid4()
 
     @classmethod
-    def create_random_string(cls, prefix: str = None, n_range: int=20) -> str:
+    def create_random_string(
+            cls, prefix: str = None, n_range: int = 20) -> str:
         st = ''.join(
             random.choice(
                 string.ascii_lowercase + string.digits)

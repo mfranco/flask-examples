@@ -7,11 +7,10 @@ import typing
 
 def json_response(
         status: int = 200, data: typing.Dict = {},
-        headers: typing.Dict = {}) -> Response:
-    mimetype:str = 'application/json'
+        headers: typing.Dict = {},
+        mimetype: str = 'application/json') -> Response:
     return Response(
         json.dumps(data), status=status, mimetype=mimetype, headers=headers)
-
 
 
 class BaseResourceView(MethodView):
@@ -32,13 +31,9 @@ class BaseResourceView(MethodView):
         return json_response(status=400)
 
 
-
 class SQLAlchemyView(BaseResourceView):
     def __init__(self):
         self.app = current_app._get_current_object()
-        if 'FLASK_SQLALCHEMY' not in self.app.config:
-            raise ConfigurationError(
-                'Not configuration found for Flask_SQLAlchemy')
         ctx = _app_ctx_stack.top
         if ctx is not None:
             if not hasattr(ctx, 'sqlalchemy_pool'):

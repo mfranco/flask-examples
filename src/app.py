@@ -4,8 +4,7 @@ import os
 import typing
 
 
-
-def get_or_create_app(name: str, routes: typing.Tuple=tuple()) -> Flask:
+def get_or_create_app(name: str, routes: typing.Tuple = tuple()) -> Flask:
 
     def init_config(app: Flask) -> None:
         """Looks for the environment variable FLASK_BH_CONFIG_PREFIXES it's
@@ -28,12 +27,10 @@ def get_or_create_app(name: str, routes: typing.Tuple=tuple()) -> Flask:
         if 'FLASK_LOG_LEVEL' not in os.environ:
             os.environ['FLASK_LOG_LEVEL'] = 'INFO'
 
-
         for k in os.environ.keys():
             for prefix in prefixes:
                 if prefix in k:
                     app.config[k] = os.environ[k]
-
 
     def init_routing(app: Flask) -> None:
         """Looks for the environment variable FLASK_BH_ROUTES it's default

@@ -1,4 +1,3 @@
-from tests.base import BaseTestFactory
 from models.orm.connection import create_pool
 from app import get_or_create_app
 from unittest.mock import patch
@@ -23,6 +22,7 @@ def test_postgresql_connection():
 
         with app.app_context():
             pool = create_pool()
-            result = pool.connections['SQLALCHEMY_DEFAULT'].session.execute('SELECT 19;')
+            result = pool.connections['SQLALCHEMY_DEFAULT'].session.execute(
+                'SELECT 19;')
             assert result.fetchone()[0] == 19
             pool.connections['SQLALCHEMY_DEFAULT'].session.close()

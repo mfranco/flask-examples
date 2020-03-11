@@ -48,15 +48,12 @@ class Album(BaseModel):
     artist_id = Column(Integer, ForeignKey('artist.id'))
 
 
-
-
 mock_env = {
     'FLASK_CONFIG_PREFIXES': 'SQLALCHEMY',
     'SQLALCHEMY_DEFAULT': 'postgresql://ds:dsps@pgdb:5432/ds_test',
 }
 
 os_environ_mock = patch.dict(os.environ, mock_env)
-
 
 
 def test_simple_insert():
@@ -76,6 +73,7 @@ def test_simple_insert():
             genre2.add()
             genre2.objects.pool.commit()
             assert 2 == Genre.objects.count()
+
 
 def test_multi_insert():
     with os_environ_mock:
@@ -97,6 +95,7 @@ def test_multi_insert():
             Genre.objects.add_all(data)
             pool.commit()
             assert 100 == Genre.objects.count()
+
 
 def test_relationships():
     with os_environ_mock:
@@ -139,6 +138,7 @@ def test_relationships():
             assert 2 == len(pink.albums)
             assert 2 == len(Artist.objects.filter_by(genre_id=rock.id)[:])
 
+
 def test_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
@@ -157,6 +157,7 @@ def test_update():
             assert rock2.description == description_updated
             assert 1 == Genre.objects.count()
 
+
 def test_get_for_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
@@ -173,6 +174,7 @@ def test_get_for_update():
             assert rock2.id == rock.id
             rock2.objects.pool.close()
 
+
 def test_delete():
     with os_environ_mock:
         app = get_or_create_app(__name__)
@@ -187,6 +189,7 @@ def test_delete():
             rock.delete()
             pool.commit()
             assert 0 == Genre.objects.count()
+
 
 def test_raw_sql():
     with os_environ_mock:

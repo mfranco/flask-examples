@@ -209,7 +209,7 @@ assert 1 == Genre.objects.count()
 
 
 
-The *get_for_update* mehthod is useful if you want to retrieve an object with lock for updates:
+The *get_for_update* method is useful if you want to retrieve an object with lock for updates:
 
 
 ```
@@ -560,6 +560,47 @@ class MessageView(BaseResourceView):
 
 
 ```
+
+
+For accessing a postgresql database you need to extend the **SQLAlchemyView**:
+
+
+```
+class BookSerializer(JsonSerializer):
+    _schema = {
+        'type': 'object',
+        'properties': {
+            'title': {'type': 'string'},
+        },
+        'required': ['title']
+    }
+
+
+class BookModel(BaseModel):
+    __tablename__ = 'books'
+    title = Column(String(256))
+
+
+class BookSQLView(SQLAlchemyView):
+    def post(self) -> Response:
+        app = current_app._get_current_object()
+        try:
+            serializer = BookSerializer(data=request.json)
+            data = serializer.data
+            obj = BookModel(title=data['title'])
+            obj.add()
+            obj.objects.pool.commit()
+            data['key'] = uuid.uuid4()
+            return json_response(status=201, data=BookSerializer(data=data).data)
+
+        except ValidationError as e:
+            return json_response(status=400, data={'msg': e.message})
+
+        except Exception as e:
+            app.logger.error(e)
+            return json_response(status=500)
+```
+
 
 
 User API

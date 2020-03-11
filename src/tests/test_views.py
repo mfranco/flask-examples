@@ -1,17 +1,16 @@
 from flask import json, request, Response, current_app
 from app import get_or_create_app
-from serializers import JsonSerializer, SerializerError
+from serializers import JsonSerializer
 from views import json_response, BaseResourceView, SQLAlchemyView
 from tests.base import BaseTestFactory
 from models.orm import BaseModel, syncdb, cleandb
-
+from sqlalchemy import Column, String
 from datetime import date, datetime
 from jsonschema.exceptions import ValidationError
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+from models.orm.connection import create_pool
 
 import os
-import sys
-import typing
 import uuid
 
 
@@ -63,7 +62,6 @@ class Message(JsonSerializer):
 
 class Error(JsonSerializer):
     _schema = error_schema
-
 
 
 class MessageView(BaseResourceView):
@@ -136,21 +134,33 @@ class MessageView(BaseResourceView):
             return json_response(status=500)
 
 
+class BookSerializer(JsonSerializer):
+    _schema = {
+        'type': 'object',
+        'properties': {
+            'title': {'type': 'string'},
+        },
+        'required': ['title']
+    }
 
 
-class MessageModel(BaseModel):
-    __tablename__ = 'messages'
+class BookModel(BaseModel):
+    __tablename__ = 'books'
     title = Column(String(256))
 
 
-class MessageSQLView(SQLAlchemyView):
+class BookSQLView(SQLAlchemyView):
     def post(self) -> Response:
         app = current_app._get_current_object()
         try:
-            serializer = NewMessage(data=request.json)
+            serializer = BookSerializer(data=request.json)
             data = serializer.data
+            obj = BookModel(title=data['title'])
+            obj.add()
+            obj.objects.pool.commit()
             data['key'] = uuid.uuid4()
-            return json_response(status=201, data=Message(data=data).data)
+            return json_response(
+                status=201, data=BookSerializer(data=data).data)
 
         except ValidationError as e:
             return json_response(status=400, data={'msg': e.message})
@@ -170,8 +180,8 @@ ROUTES = (
         'view_func': MessageView.as_view('messages_key')
     },
     {
-        'rule': '/messages-sql', 'endpoint': 'home_key',
-        'view_func': MessageSQLView.as_view('messages_key')
+        'rule': '/books', 'endpoint': 'books',
+        'view_func': BookSQLView.as_view('books')
     },
 )
 
@@ -186,8 +196,7 @@ OS_ENVIRON_MOCK = patch.dict(os.environ, MOCK_ENV)
 
 def test_http_get():
     with OS_ENVIRON_MOCK:
-        app = get_or_create_app(__name__, ROUTES)
-
+        get_or_create_app(__name__, ROUTES)
         view = MessageView()
         result = view.get()
         assert 200 == result.status_code
@@ -220,7 +229,6 @@ def test_http_post_method_view():
             assert 201 == result.status_code
 
 
-
 def test_http_put():
     with OS_ENVIRON_MOCK:
         with get_or_create_app(__name__, ROUTES).test_client() as c:
@@ -249,35 +257,25 @@ def test_http_put():
             assert 200 == result.status_code
 
 
-def test_http_post_method_view():
+def test_http_post_sql():
     with OS_ENVIRON_MOCK:
         app = get_or_create_app(__name__, ROUTES)
         with app.app_context():
             pool = create_pool()
             syncdb(pool=pool)
             cleandb(pool=pool)
-            assert 0 == MessageModel.objects.count()
+            assert 0 == BookModel.objects.count()
 
             with app.test_client() as c:
 
                 data = {
                     'title': BaseTestFactory.create_random_string(),
-                    'body': BaseTestFactory.create_random_string(),
-                    'date': date.today(),
-                    'date-time': datetime.utcnow()
                 }
-                result = c.post(
-                    '/messages-sql', data=json.dumps(data),
-                    content_type='application/json'
-                )
-                assert 400 == result.status_code
-                j_content = json.loads(result.get_data().decode('utf-8'))
-                assert "is not a 'date'" in j_content['msg']
 
-                serializer = NewMessage(data=data)
+                serializer = BookSerializer(data=data)
                 result = c.post(
-                    '/messages', data=serializer.payload,
+                    '/books', data=serializer.payload,
                     content_type='application/json'
                 )
                 assert 201 == result.status_code
-                assert 1 == MessageModel.objects.count()
+                assert 1 == BookModel.objects.count()
