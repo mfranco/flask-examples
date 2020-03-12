@@ -1,3 +1,4 @@
+from models.orm import BaseModel
 from authlib.integrations.flask_oauth2 import AuthorizationServer, ResourceProtector
 from authlib.integrations.sqla_oauth2 import (
     create_query_client_func,
@@ -13,6 +14,8 @@ from authlib.integrations.sqla_oauth2 import (
     OAuth2TokenMixin,
 )
 from sqlalchemy import Column, ForeignKey, Integer, String, Numeric, Boolean
+from sqlalchemy.orm import relationship
+from models.orm.connection import create_pool
 
 
 class OAuth2User(BaseModel):
@@ -33,26 +36,26 @@ class OAuth2Client(BaseModel, OAuth2ClientMixin):
     __tablename__ = 'oauth2_client'
 
     user_id = Column(
-        Integer, ForeignKey('user.id', ondelete='CASCADE'))
-    user = db.relationship('User')
+        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
+    user = relationship('OAuth2User')
 
 
 class OAuth2AuthorizationCode(BaseModel, OAuth2AuthorizationCodeMixin):
     __tablename__ = 'oauth2_code'
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(
-        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
-    user = db.relationship('User')
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
+    user = relationship('OAuth2User')
 
 
 class OAuth2Token(BaseModel, OAuth2TokenMixin):
     __tablename__ = 'oauth2_token'
 
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(
-        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'))
-    user = db.relationship('User')
+    id = Column(Integer, primary_key=True)
+    user_id = Column(
+        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
+    user = relationship('OAuth2User')
 
     def is_refresh_token_active(self):
         if self.revoked:
@@ -73,8 +76,8 @@ class AuthorizationCodeGrant(grants.AuthorizationCodeGrant):
             scope=request.scope,
             user_id=grant_user.id,
         )
-        db.session.add(item)
-        db.session.commit()
+        session.add(item)
+        session.commit()
         return code
 
     def parse_authorization_code(self, code, client):
@@ -84,8 +87,8 @@ class AuthorizationCodeGrant(grants.AuthorizationCodeGrant):
             return item
 
     def delete_authorization_code(self, authorization_code):
-        db.session.delete(authorization_code)
-        db.session.commit()
+        session.delete(authorization_code)
+        session.commit()
 
     def authenticate_user(self, authorization_code):
         return User.query.get(authorization_code.user_id)
@@ -109,33 +112,39 @@ class RefreshTokenGrant(grants.RefreshTokenGrant):
 
     def revoke_old_credential(self, credential):
         credential.revoked = True
-        db.session.add(credential)
-        db.session.commit()
+        session.add(credential)
+        session.commit()
 
-
-query_client = create_query_client_func(db.session, OAuth2Client)
-save_token = create_save_token_func(db.session, OAuth2Token)
-authorization = AuthorizationServer(
-    query_client=query_client,
-    save_token=save_token,
-)
-require_oauth = ResourceProtector()
 
 
 def config_oauth(app):
-    authorization.init_app(app)
 
-    # support all grants
-    authorization.register_grant(grants.ImplicitGrant)
-    authorization.register_grant(grants.ClientCredentialsGrant)
-    authorization.register_grant(AuthorizationCodeGrant)
-    authorization.register_grant(PasswordGrant)
-    authorization.register_grant(RefreshTokenGrant)
+    with app.app_context():
+        pool = create_pool()
 
-    # support revocation
-    revocation_cls = create_revocation_endpoint(db.session, OAuth2Token)
-    authorization.register_endpoint(revocation_cls)
+        query_client = create_query_client_func(
+            pool.get_session(), OAuth2Client)
 
-    # protect resource
-    bearer_cls = create_bearer_token_validator(db.session, OAuth2Token)
-    require_oauth.register_token_validator(bearer_cls())
+        save_token = create_save_token_func(pool.get_session(), OAuth2Token)
+
+        authorization = AuthorizationServer(
+            query_client=query_client,
+            save_token=save_token,
+        )
+
+        authorization.init_app(app)
+
+        ## support all grants
+        authorization.register_grant(grants.ImplicitGrant)
+        authorization.register_grant(grants.ClientCredentialsGrant)
+        authorization.register_grant(AuthorizationCodeGrant)
+        authorization.register_grant(PasswordGrant)
+        authorization.register_grant(RefreshTokenGrant)
+        ## support revocation
+        revocation_cls = create_revocation_endpoint(pool.get_session(), OAuth2Token)
+        authorization.register_endpoint(revocation_cls)
+
+        ## protect resource
+        require_oauth = ResourceProtector()
+        bearer_cls = create_bearer_token_validator(pool.get_session(), OAuth2Token)
+        require_oauth.register_token_validator(bearer_cls())

@@ -37,6 +37,10 @@ class ConnectionPool:
                 session.configure(bind=engine)
                 self.connections[connection_name] = Connection(engine, session)
 
+    def get_session(self, connection_name='SQLALCHEMY_DEFAULT'):
+        return self.connections[connection_name].session
+
+
     def close(self):
         for k, v in self.connections.items():
             v.session.remove()

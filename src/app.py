@@ -1,8 +1,12 @@
+from authlib.integrations.flask_oauth2 import AuthorizationServer
 from flask import Flask, current_app
+
 
 import os
 import typing
 
+# https://github.com/authlib/example-oauth2-server/
+# https://github.com/lepture/authlib/
 
 def get_or_create_app(name: str, routes: typing.Tuple = tuple()) -> Flask:
 
