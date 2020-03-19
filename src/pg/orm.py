@@ -1,9 +1,10 @@
+from flask import current_app
 from sqlalchemy import Column, Integer
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.sql import text
 
-from flask_philo_sqlalchemy.schema import Base
-from flask_philo_sqlalchemy.connection import create_pool
+from pg import PGSqlAlchemy
+from pg.schema import Base
 
 
 class BaseManager(object):
@@ -13,19 +14,20 @@ class BaseManager(object):
     """
     def __init__(self, model):
         self._model = model
-        self._pool = None
+        self._db = None
 
     @property
-    def pool(self):
-        if self._pool is None:
-            self._pool = create_pool()
-        return self._pool
+    def db(self):
+        if self._db is None:
+            self._db = PGSqlAlchemy(current_app._get_current_object())
+        return self._db
+
 
     def filter_by(
         self, order_by='id', limit=500, offset=0,
             connection_name='SQLALCHEMY_DEFAULT', **kwargs):
 
-        return self.pool.connections[connection_name].session.query(
+        return self.db.pool.connections[connection_name].session.query(
             self._model
             ).filter_by(
                 **kwargs
@@ -40,7 +42,7 @@ class BaseManager(object):
             raise Exception(
                 "Can not execute a query without parameters")
 
-        obj = self.pool.connections[connection_name].session.query(
+        obj = self.db.pool.connections[connection_name].session.query(
             self._model).with_for_update(
                 nowait=True, of=self._model).filter_by(**kwargs).first()
         if not obj:
@@ -52,7 +54,7 @@ class BaseManager(object):
         if not kwargs:
             raise Exception(
                 "Can not execute a query without parameters")
-        obj = self.pool.connections[
+        obj = self.db.pool.connections[
             connection_name].session.query(
                 self._model).filter_by(**kwargs).first()
 
@@ -61,7 +63,7 @@ class BaseManager(object):
         return obj
 
     def count(self, connection_name='SQLALCHEMY_DEFAULT'):
-        result = self.pool.connections[connection_name].session.execute(
+        result = self.db.pool.connections[connection_name].session.execute(
             'SELECT count(id) from {}'.format(self._model.__table__.name)
         )
 
@@ -72,11 +74,11 @@ class BaseManager(object):
             return 0
 
     def raw_sql(self, sql, connection_name='SQLALCHEMY_DEFAULT', **kwargs):
-        return self.pool.connections[
+        return self.db.pool.connections[
             connection_name].session.execute(text(sql), kwargs)
 
     def add_all(self, data, connection_name='SQLALCHEMY_DEFAULT'):
-        return self.pool.connections[connection_name].session.add_all(data)
+        return self.db.pool.connections[connection_name].session.add_all(data)
 
 
 class BaseModel(Base):
@@ -104,12 +106,12 @@ class BaseModel(Base):
         return BaseManager(cls)
 
     def update(self, connection_name='SQLALCHEMY_DEFAULT'):
-        self.objects.pool.connections[connection_name].session.flush()
+        self.objects.db.pool.connections[connection_name].session.flush()
 
     def add(self, connection_name='SQLALCHEMY_DEFAULT'):
-        self.objects.pool.connections[connection_name].session.add(self)
-        self.objects.pool.connections[connection_name].session.flush()
+        self.objects.db.pool.connections[connection_name].session.add(self)
+        self.objects.db.pool.connections[connection_name].session.flush()
 
     def delete(self, connection_name='SQLALCHEMY_DEFAULT'):
-        self.objects.pool.connections[connection_name].session.delete(self)
-        self.objects.pool.connections[connection_name].session.flush()
+        self.objects.db.pool.connections[connection_name].session.delete(self)
+        self.objects.db.pool.connections[connection_name].session.flush()

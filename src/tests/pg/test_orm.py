@@ -1,10 +1,10 @@
-from models.orm import BaseModel, syncdb, cleandb
-from models.orm.types import Password
+from pg.orm import BaseModel
+from pg.types import Password
 from sqlalchemy import Column, ForeignKey, Integer, String, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from unittest.mock import patch
 from app import get_or_create_app
-from models.orm.connection import create_pool
+from pg import PGSqlAlchemy
 
 import os
 
@@ -60,18 +60,17 @@ def test_simple_insert():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             assert 0 == Genre.objects.count()
             genre = Genre(name='name1', description='dsc1')
             genre.add()
-            pool.commit()
+            db.pool.commit()
             assert 1 == Genre.objects.count()
             genre2 = Genre(name='name2', description='dsc2')
             genre2.add()
-            genre2.objects.pool.commit()
+            db.pool.commit()
             assert 2 == Genre.objects.count()
 
 
@@ -80,9 +79,9 @@ def test_multi_insert():
         app = get_or_create_app(__name__)
 
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
 
             assert 0 == Genre.objects.count()
             data = [
@@ -93,7 +92,7 @@ def test_multi_insert():
             ]
 
             Genre.objects.add_all(data)
-            pool.commit()
+            db.pool.commit()
             assert 100 == Genre.objects.count()
 
 
@@ -101,40 +100,40 @@ def test_relationships():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
             rock.add()
-            pool.commit()
+            db.pool.commit()
             pink = Artist(
                 genre_id=rock.id, name='Pink Floyd', description='Awsome')
             pink.add()
-            pool.commit()
+            db.pool.commit()
             dark = Album(
                 artist_id=pink.id, name='Dark side of the moon',
                 description='Interesting')
             dark.add()
-            pool.commit()
+            db.pool.commit()
             rolling = Artist(
                 genre_id=rock.id,
                 name='Rolling Stones', description='Acceptable')
 
             rolling.add()
-            pool.commit()
+            db.pool.commit()
 
             hits = Album(
                 artist_id=rolling.id, name='Greatest hits',
                 description='Interesting')
             hits.add()
-            pool.commit()
+            db.pool.commit()
             assert 2 == Album.objects.count()
 
             wall = Album(
                 artist_id=pink.id, name='The Wall',
                 description='Interesting')
             wall.add()
-            pool.commit()
+            db.pool.commit()
             assert 2 == len(pink.albums)
             assert 2 == len(Artist.objects.filter_by(genre_id=rock.id)[:])
 
@@ -143,16 +142,16 @@ def test_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
             rock.add()
-            pool.commit()
+            db.pool.commit()
             description_updated = 'description_updated'
             rock.description = description_updated
             rock.update()
-            pool.commit()
+            db.pool.commit()
             rock2 = Genre.objects.get(id=rock.id)
             assert rock2.description == description_updated
             assert 1 == Genre.objects.count()
@@ -162,32 +161,32 @@ def test_get_for_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
             rock.add()
-            pool.commit()
+            db.pool.commit()
             rock2 = Genre.objects.get_for_update(id=rock.id)
             rock2.name = 'updated name'
             rock2.update()
             assert rock2.id == rock.id
-            rock2.objects.pool.close()
+            rock2.objects.db.pool.close()
 
 
 def test_delete():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
             rock.add()
-            pool.commit()
+            db.pool.commit()
             assert 1 == Genre.objects.count()
             rock.delete()
-            pool.commit()
+            db.pool.commit()
             assert 0 == Genre.objects.count()
 
 
@@ -195,27 +194,27 @@ def test_raw_sql():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
             rock.add()
-            pool.commit()
+            db.pool.commit()
             pink = Artist(
                 genre_id=rock.id, name='Pink Floyd', description='Awsome')
             pink.add()
-            pool.commit()
+            db.pool.commit()
             dark = Album(
                 artist_id=pink.id, name='Dark side of the moon',
                 description='Interesting')
             dark.add()
-            pool.commit()
+            db.pool.commit()
             rolling = Artist(
                 genre_id=rock.id,
                 name='Rolling Stones', description='Acceptable')
 
             rolling.add()
-            pool.commit()
+            db.pool.commit()
             sql = """
                 SELECT a.name as artist_name, a.description artist_description,
                 g.name as artist_genre
@@ -246,13 +245,13 @@ def test_encrypted_password():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
             user = User(
                 username='username', email='eil@il.com', password='123')
             user.add()
-            pool.commit()
+            db.pool.commit()
             id = user.id
             # objects needs to dereferenciated otherwise
             # user2 will be just a copy of user

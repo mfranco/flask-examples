@@ -1,5 +1,5 @@
-from models.orm import BaseModel, syncdb, cleandb
-from models.orm.connection import create_pool
+from pg.orm import BaseModel
+from pg import PGSqlAlchemy
 from sqlalchemy import Column, String
 from app import get_or_create_app
 from unittest.mock import patch
@@ -25,13 +25,13 @@ def test_muti_crud():
         app = get_or_create_app(__name__)
 
         with app.app_context():
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
+            db = PGSqlAlchemy(app)
+            db.syncdb()
+            db.cleandb()
 
             rock = Example(name='Rock')
             rock.add(connection_name='SQLALCHEMY_DEFAULT')
-            pool.commit(connection_name='SQLALCHEMY_DEFAULT')
+            db.pool.commit(connection_name='SQLALCHEMY_DEFAULT')
 
             assert 1 == Example.objects.count(
                 connection_name='SQLALCHEMY_DEFAULT')
@@ -40,7 +40,7 @@ def test_muti_crud():
 
             rock2 = Example(name='Rock2')
             rock2.add(connection_name='SQLALCHEMY_DB2')
-            pool.commit(connection_name='SQLALCHEMY_DB2')
+            db.pool.commit(connection_name='SQLALCHEMY_DB2')
 
             assert 1 == Example.objects.count(
                 connection_name='SQLALCHEMY_DB2')
@@ -53,7 +53,7 @@ def test_muti_crud():
             assert r1.name != r2.name
 
             rock.delete()
-            pool.commit()
+            db.pool.commit()
             assert 0 == Example.objects.count(
                 connection_name='SQLALCHEMY_DEFAULT')
 
@@ -65,4 +65,4 @@ def test_muti_crud():
 
             assert 0 == len(l1)
             assert 1 == len(l2)
-            cleandb(pool=pool)
+            db.cleandb()

@@ -16,13 +16,17 @@ mock_env = {
 
 os_environ_mock = patch.dict(os.environ, mock_env)
 
+def config_app(app):
+    pool = create_pool()
+    syncdb(pool=pool)
+    cleandb(pool=pool)
+    config_oauth(app)
+
+
 
 def test_oauth():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-
-            pool = create_pool()
-            syncdb(pool=pool)
-            cleandb(pool=pool)
-            config_oauth(app)
+            config_app(app)
+            

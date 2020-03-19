@@ -27,7 +27,7 @@ class OAuth2User(BaseModel):
 
     @classmethod
     def authenticate(cls, username=None, email=None, password=None):
-        user = User.objects.get(username=username)
+        user = cls.objects.get(username=username)
         assert user.password == password
         return user
 
