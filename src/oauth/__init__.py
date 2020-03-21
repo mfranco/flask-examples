@@ -1,4 +1,3 @@
-from models.orm import BaseModel
 from authlib.integrations.flask_oauth2 import AuthorizationServer, ResourceProtector
 from authlib.integrations.sqla_oauth2 import (
     create_query_client_func,
@@ -8,66 +7,10 @@ from authlib.integrations.sqla_oauth2 import (
 )
 from authlib.oauth2.rfc6749 import grants
 from werkzeug.security import gen_salt
-from authlib.integrations.sqla_oauth2 import (
-    OAuth2ClientMixin,
-    OAuth2AuthorizationCodeMixin,
-    OAuth2TokenMixin,
-)
-from sqlalchemy import Column, ForeignKey, Integer, String, Numeric, Boolean
-from sqlalchemy.orm import relationship
-from models.orm.connection import create_pool
-
-
-class OAuth2User(BaseModel):
-    __tablename__ = 'oauth2_users'
-    username = Column(String(64), unique=True)
-
-    def get_id(self):
-        return self.id
-
-    @classmethod
-    def authenticate(cls, username=None, email=None, password=None):
-        user = cls.objects.get(username=username)
-        assert user.password == password
-        return user
-
-
-class OAuth2Client(BaseModel, OAuth2ClientMixin):
-    __tablename__ = 'oauth2_client'
-
-    user_id = Column(
-        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
-    user = relationship('OAuth2User')
-
-
-class OAuth2AuthorizationCode(BaseModel, OAuth2AuthorizationCodeMixin):
-    __tablename__ = 'oauth2_code'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(
-        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
-    user = relationship('OAuth2User')
-
-
-class OAuth2Token(BaseModel, OAuth2TokenMixin):
-    __tablename__ = 'oauth2_token'
-
-    id = Column(Integer, primary_key=True)
-    user_id = Column(
-        Integer, ForeignKey('oauth2_users.id', ondelete='CASCADE'))
-    user = relationship('OAuth2User')
-
-    def is_refresh_token_active(self):
-        if self.revoked:
-            return False
-        expires_at = self.issued_at + self.expires_in * 2
-        return expires_at >= time.time()
-
-
 
 
 class AuthorizationCodeGrant(grants.AuthorizationCodeGrant):
-    def create_authorization_code(self, client, grant_user, request):
+    def create_authorization_code(sef, client, grant_user, request):
         code = gen_salt(48)
         item = OAuth2AuthorizationCode(
             code=code,
@@ -117,13 +60,13 @@ class RefreshTokenGrant(grants.RefreshTokenGrant):
 
 
 
-def config_oauth(app):
+
+
+
+def config_oauth(app, db):
 
     with app.app_context():
         pool = create_pool()
-
-        query_client = create_query_client_func(
-            pool.get_session(), OAuth2Client)
 
         save_token = create_save_token_func(pool.get_session(), OAuth2Token)
 
@@ -135,8 +78,6 @@ def config_oauth(app):
         authorization.init_app(app)
 
         ## support all grants
-        authorization.register_grant(grants.ImplicitGrant)
-        authorization.register_grant(grants.ClientCredentialsGrant)
         authorization.register_grant(AuthorizationCodeGrant)
         authorization.register_grant(PasswordGrant)
         authorization.register_grant(RefreshTokenGrant)

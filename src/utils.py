@@ -1,5 +1,4 @@
 from flask import json, Response, current_app, _app_ctx_stack
-from models.orm.connection import create_pool
 from flask.views import MethodView
 
 import typing

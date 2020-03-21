@@ -1,10 +1,10 @@
-from oauth import (
-    OAuth2User, OAuth2Client, OAuth2AuthorizationCode, OAuth2Token,
-    config_oauth)
+from oauth.models import (
+    OAuth2User, OAuth2Client, OAuth2AuthorizationCode, OAuth2Token)
+from oauth import config_oauth
 from unittest.mock import patch
 from app import get_or_create_app
-from models.orm.connection import create_pool
-from models.orm import syncdb, cleandb
+from oauth.views import signup
+from pg import PGSqlAlchemy
 import os
 
 
@@ -17,9 +17,9 @@ mock_env = {
 os_environ_mock = patch.dict(os.environ, mock_env)
 
 def config_app(app):
-    pool = create_pool()
-    syncdb(pool=pool)
-    cleandb(pool=pool)
+    db = PGSqlAlchemy(app)
+    db.syncdb()
+    db.cleandb()
     config_oauth(app)
 
 

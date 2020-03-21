@@ -1,5 +1,5 @@
 from pg.orm import BaseModel
-from pg import PGSqlAlchemy
+from pg import init_db
 from sqlalchemy import Column, String
 from app import get_or_create_app
 from unittest.mock import patch
@@ -25,7 +25,7 @@ def test_muti_crud():
         app = get_or_create_app(__name__)
 
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
 

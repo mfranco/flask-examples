@@ -1,10 +1,10 @@
-from pg.orm import BaseModel
+from pg import init_db
 from pg.types import Password
 from sqlalchemy import Column, ForeignKey, Integer, String, Numeric, Boolean
 from sqlalchemy.orm import relationship
 from unittest.mock import patch
 from app import get_or_create_app
-from pg import PGSqlAlchemy
+from pg.orm import BaseModel
 
 import os
 
@@ -60,7 +60,7 @@ def test_simple_insert():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             assert 0 == Genre.objects.count()
@@ -79,7 +79,7 @@ def test_multi_insert():
         app = get_or_create_app(__name__)
 
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
 
@@ -100,7 +100,7 @@ def test_relationships():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
@@ -142,7 +142,7 @@ def test_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
@@ -161,7 +161,7 @@ def test_get_for_update():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
@@ -178,7 +178,7 @@ def test_delete():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
@@ -194,7 +194,7 @@ def test_raw_sql():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             rock = Genre(name='Rock', description='rock yeah!!!')
@@ -245,7 +245,7 @@ def test_encrypted_password():
     with os_environ_mock:
         app = get_or_create_app(__name__)
         with app.app_context():
-            db = PGSqlAlchemy(app)
+            db = init_db(app)
             db.syncdb()
             db.cleandb()
             user = User(
