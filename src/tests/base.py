@@ -26,7 +26,7 @@ class BaseTestFactory(object):
     @classmethod
     def create_random_email(cls, prefix: str = None) -> str:
         return '{0}@{1}.com'.format(
-            cls.create_unique_string(), cls.create_unique_string())
+            cls.create_random_string(), cls.create_random_string())
 
     @classmethod
     def create_random_decimal(cls, n=10000):

@@ -11,6 +11,10 @@ def run_unit_tests() -> str:
     args, extra_params = parser.parse_known_args()
     return "pipenv run pytest -s -q /flask-examples/{}".format(args.q)
 
+def connect_pg() -> str:
+    return '/usr/bin/pg_ctl  restart; psql'
+
+
 def main():
     description = 'Run a command inside a container '
     parser = argparse.ArgumentParser(description=description)
@@ -20,7 +24,8 @@ def main():
     args, extra_params = parser.parse_known_args()
 
     command_options = {
-        'test': run_unit_tests()
+        'test': {'cmd': run_unit_tests, 'image': 'python'},
+        'connect_pg': {'cmd': connect_pg, 'image': 'postgresql'}
     }
 
 
@@ -29,10 +34,10 @@ def main():
         "run",
         "--rm",
         "--volume={}/:/flask-examples/".format(os.getcwd()),
-        "python",
+        command_options[args.command]['image'],
         "sh",
         "-c",
-        command_options[args.command]
+        command_options[args.command]['cmd']()
     ]
 
     subprocess.run(cmd, cwd=r'./tools')

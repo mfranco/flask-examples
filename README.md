@@ -29,7 +29,8 @@ Run the unit test suite with the following command:
 
 
 ```
-python3 manage.py test --q src/tests/
+python3 manage.py test --q src/
+
 ```
 
 
@@ -59,10 +60,11 @@ The following example shows how to create basic models:
 
 
 ```
-from models.orm import BaseModel
-from models.orm.types import Password
+from pg.types import Password
 from sqlalchemy import Column, ForeignKey, Integer, String, Numeric, Boolean
 from sqlalchemy.orm import relationship
+from pg.orm import BaseModel
+
 
 
 class User(BaseModel):
@@ -113,15 +115,30 @@ The following examples show how to perform basic insert operations
 
 ```
 
-assert 0 == Genre.objects.count()
-genre = Genre(name='name1', description='dsc1')
-genre.add()
-genre.objects.pool.commit()
-assert 1 == Genre.objects.count()
-genre2 = Genre(name='name2', description='dsc2')
-genre2.add()
-genre2.objects.pool.commit()
-assert 2 == Genre.objects.count()
+mock_env = {
+    'FLASK_CONFIG_PREFIXES': 'SQLALCHEMY',
+    'SQLALCHEMY_DEFAULT': 'postgresql://ds:dsps@pgdb:5432/ds_test',
+}
+
+os_environ_mock = patch.dict(os.environ, mock_env)
+
+
+def test_simple_insert():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            assert 0 == Genre.objects.count()
+            genre = Genre(name='name1', description='dsc1')
+            genre.add()
+            db.pool.commit()
+            assert 1 == Genre.objects.count()
+            genre2 = Genre(name='name2', description='dsc2')
+            genre2.add()
+            db.pool.commit()
+            assert 2 == Genre.objects.count()
 
 
 ```
@@ -132,17 +149,26 @@ You can perform also multiple insert operations at once:
 
 
 ```
-assert 0 == Genre.objects.count()
-data = [
-    Genre(
-        name='genre{}'.format(x),
-        description='descript{}'.format(x))
-    for x in range(100)
-]
+def test_multi_insert():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
 
-Genre.objects.add_all(data)
-Genre.objects.pool.commit()
-assert 100 == Genre.objects.count()
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+
+            assert 0 == Genre.objects.count()
+            data = [
+                Genre(
+                    name='genre{}'.format(x),
+                    description='descript{}'.format(x))
+                for x in range(100)
+            ]
+
+            Genre.objects.add_all(data)
+            db.pool.commit()
+            assert 100 == Genre.objects.count()
 
 ```
 
@@ -152,39 +178,46 @@ The following example shows how to use foreing keys for relational data:
 
 
 ```
-rock = Genre(name='Rock', description='rock yeah!!!')
-rock.add()
-rock.objectrs.pool.commit()
-pink = Artist(
-    genre_id=rock.id, name='Pink Floyd', description='Awsome')
-pink.add()
-pink.objects.pool.commit()
-dark = Album(
-    artist_id=pink.id, name='Dark side of the moon',
-    description='Interesting')
-dark.add()
-dark.objects.pool.commit()
-rolling = Artist(
-    genre_id=rock.id,
-    name='Rolling Stones', description='Acceptable')
+def test_relationships():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            rock = Genre(name='Rock', description='rock yeah!!!')
+            rock.add()
+            db.pool.commit()
+            pink = Artist(
+                genre_id=rock.id, name='Pink Floyd', description='Awsome')
+            pink.add()
+            db.pool.commit()
+            dark = Album(
+                artist_id=pink.id, name='Dark side of the moon',
+                description='Interesting')
+            dark.add()
+            db.pool.commit()
+            rolling = Artist(
+                genre_id=rock.id,
+                name='Rolling Stones', description='Acceptable')
 
-rolling.add()
-rolling.objects.pool.commit()
+            rolling.add()
+            db.pool.commit()
 
-hits = Album(
-    artist_id=rolling.id, name='Greatest hits',
-    description='Interesting')
-hits.add()
-hits.objects.pool.commit()
-assert 2 == Album.objects.count()
+            hits = Album(
+                artist_id=rolling.id, name='Greatest hits',
+                description='Interesting')
+            hits.add()
+            db.pool.commit()
+            assert 2 == Album.objects.count()
 
-wall = Album(
-    artist_id=pink.id, name='The Wall',
-    description='Interesting')
-wall.add()
-wall.objects.pool.commit()
-assert 2 == len(pink.albums)
-assert 2 == len(Artist.objects.filter_by(genre_id=rock.id)[:])
+            wall = Album(
+                artist_id=pink.id, name='The Wall',
+                description='Interesting')
+            wall.add()
+            db.pool.commit()
+            assert 2 == len(pink.albums)
+            assert 2 == len(Artist.objects.filter_by(genre_id=rock.id)[:])
 
 ```
 
@@ -194,16 +227,23 @@ Update operations are also supported:
 
 
 ```
-rock = Genre(name='Rock', description='rock yeah!!!')
-rock.add()
-rocke.objects.pool.commit()
-description_updated = 'description_updated'
-rock.description = description_updated
-rock.update()
-rock.objects.pool.commit()
-rock2 = Genre.objects.get(id=rock.id)
-assert rock2.description == description_updated
-assert 1 == Genre.objects.count()
+def test_update():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            rock = Genre(name='Rock', description='rock yeah!!!')
+            rock.add()
+            db.pool.commit()
+            description_updated = 'description_updated'
+            rock.description = description_updated
+            rock.update()
+            db.pool.commit()
+            rock2 = Genre.objects.get(id=rock.id)
+            assert rock2.description == description_updated
+            assert 1 == Genre.objects.count()
 
 ```
 
@@ -213,14 +253,21 @@ The *get_for_update* method is useful if you want to retrieve an object with loc
 
 
 ```
-rock = Genre(name='Rock', description='rock yeah!!!')
-rock.add()
-pool.commit()
-rock2 = Genre.objects.get_for_update(id=rock.id)
-rock2.name = 'updated name'
-rock2.update()
-assert rock2.id == rock.id
-rock2.objects.pool.close()
+def test_get_for_update():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            rock = Genre(name='Rock', description='rock yeah!!!')
+            rock.add()
+            db.pool.commit()
+            rock2 = Genre.objects.get_for_update(id=rock.id)
+            rock2.name = 'updated name'
+            rock2.update()
+            assert rock2.id == rock.id
+            rock2.objects.db.pool.close()
 
 
 ```
@@ -229,61 +276,75 @@ rock2.objects.pool.close()
 The following examples show how to delete records from the database:
 
 ```
-rock = Genre(name='Rock', description='rock yeah!!!')
-rock.add()
-rock.objects.pool.commit()
-assert 1 == Genre.objects.count()
-rock.delete()
-rock.objects.pool.commit()
-assert 0 == Genre.objects.count()
+def test_delete():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            rock = Genre(name='Rock', description='rock yeah!!!')
+            rock.add()
+            db.pool.commit()
+            assert 1 == Genre.objects.count()
+            rock.delete()
+            db.pool.commit()
+            assert 0 == Genre.objects.count()
 ```
 
 
 The ORM supports the usage of raw SQL sentences:
 
 ```
-rock = Genre(name='Rock', description='rock yeah!!!')
-rock.add()
-pool.commit()
-pink = Artist(
-    genre_id=rock.id, name='Pink Floyd', description='Awsome')
-pink.add()
-pink.objects.pool.commit()
-dark = Album(
-    artist_id=pink.id, name='Dark side of the moon',
-    description='Interesting')
-dark.add()
-dark.objects.pool.commit()
-rolling = Artist(
-    genre_id=rock.id,
-    name='Rolling Stones', description='Acceptable')
+def test_raw_sql():
+    with os_environ_mock:
+        app = get_or_create_app(__name__)
+        with app.app_context():
+            db = init_db(app)
+            db.syncdb()
+            db.cleandb()
+            rock = Genre(name='Rock', description='rock yeah!!!')
+            rock.add()
+            db.pool.commit()
+            pink = Artist(
+                genre_id=rock.id, name='Pink Floyd', description='Awsome')
+            pink.add()
+            db.pool.commit()
+            dark = Album(
+                artist_id=pink.id, name='Dark side of the moon',
+                description='Interesting')
+            dark.add()
+            db.pool.commit()
+            rolling = Artist(
+                genre_id=rock.id,
+                name='Rolling Stones', description='Acceptable')
 
-rolling.add()
-pool.commit()
-sql = """
-    SELECT a.name as artist_name, a.description artist_description,
-    g.name as artist_genre
-    FROM artist a
-    INNER JOIN genre g ON a.genre_id = g.id
-    ORDER BY a.id DESC;
-"""
+            rolling.add()
+            db.pool.commit()
+            sql = """
+                SELECT a.name as artist_name, a.description artist_description,
+                g.name as artist_genre
+                FROM artist a
+                INNER JOIN genre g ON a.genre_id = g.id
+                ORDER BY a.id DESC;
+            """
 
-result = Genre.objects.raw_sql(sql).fetchall()
-assert 2 == len(result)
-assert 'Rolling Stones' == result[0][0]
+            result = Genre.objects.raw_sql(sql).fetchall()
+            assert 2 == len(result)
+            assert 'Rolling Stones' == result[0][0]
 
-sql = """
-    SELECT a.name as artist_name, a.description artist_description,
-    g.name as artist_genre
-    FROM artist a
-    INNER JOIN genre g ON a.genre_id = g.id
-    WHERE a.id = :artist_id
-    ORDER BY a.id DESC;
-"""
+            sql = """
+                SELECT a.name as artist_name, a.description artist_description,
+                g.name as artist_genre
+                FROM artist a
+                INNER JOIN genre g ON a.genre_id = g.id
+                WHERE a.id = :artist_id
+                ORDER BY a.id DESC;
+            """
 
-result = Genre.objects.raw_sql(sql, artist_id=pink.id).fetchall()
-assert 1 == len(result)
-assert 'Pink Floyd' == result[0][0]
+            result = Genre.objects.raw_sql(sql, artist_id=pink.id).fetchall()
+            assert 1 == len(result)
+            assert 'Pink Floyd' == result[0][0]
 ```
 
 
@@ -466,227 +527,6 @@ def test_serializer_uuid_date_datetime():
 ```
 
 
-Extend from **SQLAlchemyView** if you need database connection:
-
-
-```
-
-```
-
-
-
-
-HTTP Views
----------------
-
-
-You can extend the **BaseResourceView** if you do not need a sqlachemy based postgres connection:
-
-
-
-```
-
-from views import json_response, BaseResourceView, , SQLAlchemyView
-
-
-class MessageView(BaseResourceView):
-    db = {
-        'f3f99fe6-3099-4fc4-aad4-31babad961c6':
-            {
-                'key': 'f3f99fe6-3099-4fc4-aad4-31babad961c6',
-                'title': 'title-1',
-                'body': 'body-1',
-                'date': date.today(),
-                'date-time': datetime.utcnow()
-            },
-
-        'c7b20c35-2779-49ec-9d09-9e287fcbe372':
-            {
-                'key': 'c7b20c35-2779-49ec-9d09-9e287fcbe372',
-                'title': 'title-2',
-                'body': 'body-2',
-                'date': date.today(),
-                'date-time': datetime.utcnow()
-            },
-    }
-
-    def get(self, key: uuid = None) -> Response:
-        status = 200
-        data = {}
-
-        if key is not None:
-            if key in self.db:
-                data = Message(data=self.db[key]).data
-            else:
-                status = 404
-        else:
-            data = [
-                Message(data=record).data
-                for record in self.db.values()
-            ]
-        return json_response(status=status, data=data)
-
-    def post(self) -> Response:
-        app = current_app._get_current_object()
-        try:
-            serializer = NewMessage(data=request.json)
-            data = serializer.data
-            data['key'] = uuid.uuid4()
-            return json_response(status=201, data=Message(data=data).data)
-
-        except ValidationError as e:
-            return json_response(status=400, data={'msg': e.message})
-
-        except Exception as e:
-            app.logger.error(e)
-            return json_response(status=500)
-
-    def put(self, key: uuid = None) -> Response:
-        app = current_app._get_current_object()
-        try:
-            self.db[str(key)]
-            serializer = Message(data=request.json)
-            return json_response(status=200, data=serializer.data)
-
-        except ValidationError as e:
-            return json_response(status=400, data={'msg': e.message})
-
-        except KeyError:
-            return json_response(status=404)
-
-        except Exception as e:
-            app.logger.error(e)
-            return json_response(status=500)
-
-
-```
-
-
-For accessing a postgresql database you need to extend the **SQLAlchemyView**:
-
-
-```
-class BookSerializer(JsonSerializer):
-    _schema = {
-        'type': 'object',
-        'properties': {
-            'title': {'type': 'string'},
-        },
-        'required': ['title']
-    }
-
-
-class BookModel(BaseModel):
-    __tablename__ = 'books'
-    title = Column(String(256))
-
-
-class BookSQLView(SQLAlchemyView):
-    def post(self) -> Response:
-        app = current_app._get_current_object()
-        try:
-            serializer = BookSerializer(data=request.json)
-            data = serializer.data
-            obj = BookModel(title=data['title'])
-            obj.add()
-            obj.objects.pool.commit()
-            data['key'] = uuid.uuid4()
-            return json_response(status=201, data=BookSerializer(data=data).data)
-
-        except ValidationError as e:
-            return json_response(status=400, data={'msg': e.message})
-
-        except Exception as e:
-            app.logger.error(e)
-            return json_response(status=500)
-```
-
-
-
-User API
-----------
-
-The main goal is desing and built a RestFull API that handles user registration and login for a new service 
-(let's say a music service but could be anything). The API format will be JSON. The first thing that we must do
-is define a root url: ::
-
-    http://[hostname]/mymusic/api/v1.0/
-
-
-After that we will define the User Resource urls that will allows to create, query, update, delete an user.
-
-
-Create an User
---------------
-
-POST request to create an user: ::
-
-    curl -X POST localhost:5000/mymusic/api/v1.0/users/ -H "Content-Type: application/json" \
-         -d '{"username": "maigfrga", "email": "maigfrga@gmail.com", \
-              "last_name": "franco", "first_name": "manuel"}'
-
-
-
-This request will return a json with the user information, access_token included: ::
-
-        {
-          "user": {
-            "access_token": "dda568fe6781259a1f9b910c6704b4da", 
-            "email": "maigfrga@gmail.com", 
-            "first_name": "manuel", 
-            "id": 1, 
-            "last_name": "franco", 
-            "username": "maigfrga"
-          }
-        }
-
-
-
-Authentication
---------------
-
-GET, PUT, DELETE request requires authentication, the API expects two headers **api_access_token** and **api_username** the next example will return user information, authentication is required: ::
-
-
-    curl  localhost:5000/mymusic/api/v1.0/users/ -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
-         -H "api_username: maigfrga"
-
-
-This call will return the user data: ::
-
-    {
-        "access_token": "dda568fe6781259a1f9b910c6704b4da", 
-        "email": "maigfrga@gmail.com", 
-        "first_name": "manuel", 
-        "id": 1, 
-        "last_name": "franco", 
-        "username": "maigfrga"
-    }
-
-
-
-
-
-Update an user
---------------
-
-Perform a PUT request will update the user resource: ::
-
-
-        curl -X PUT  localhost:5000/mymusic/api/v1.0/users/ -H "Content-Type: application/json" \
-             -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
-             -H "api_username: maigfrga" -d '{"last_name": "last name modified"}'
-
-
-
-Delete an user
---------------
-
-Perform  a DELETE request will delete the user resource: ::
-
-        curl -X DELETE  localhost:5000/mymusic/api/v1.0/users/  \
-         -H "api_access_token: dda568fe6781259a1f9b910c6704b4da" \
-         -H "api_username: maigfrga"
 
 
 Useful commands
